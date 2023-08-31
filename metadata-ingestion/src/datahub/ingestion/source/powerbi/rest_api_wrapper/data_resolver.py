@@ -353,7 +353,11 @@ class DataResolverBase(ABC):
             headers=self.get_authorization_header(),
         )
         logger.debug(f"Request response = {response}")
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except Exception as e:
+            logger.error(f"Failed fetching tiles with error: {e}")
+            return []
 
         # Iterate through response and create a list of PowerBiAPI.Dashboard
         tile_dict: List[Any] = response.json().get(Constant.VALUE, [])

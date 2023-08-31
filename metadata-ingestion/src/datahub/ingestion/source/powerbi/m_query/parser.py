@@ -5,6 +5,7 @@ from typing import Dict, List
 
 import lark
 from lark import Lark, Tree
+import signal
 
 from datahub.ingestion.source.powerbi.config import PowerBiDashboardSourceReport
 from datahub.ingestion.source.powerbi.m_query import resolver, validator
@@ -34,12 +35,20 @@ def _parse_expression(expression: str) -> Tree:
     expression = expression.replace("\u00a0", " ")
 
     logger.debug(f"Parsing expression = {expression}")
-    parse_tree: Tree = lark_parser.parse(expression)
+    try:
+        signal.signal(signal.SIGALRM, handler)
+        signal.alarm(120)
+        parse_tree: Tree = lark_parser.parse(expression)
+    except TimeoutError as e:
+        logger.error(f"Timeout while parsing expression = {expression}")
 
     if TRACE_POWERBI_MQUERY_PARSER:
         logger.debug(parse_tree.pretty())
 
     return parse_tree
+
+def handler(signum, frame):
+    raise TimeoutError("Parsing took too long")
 
 
 def get_upstream_tables(
